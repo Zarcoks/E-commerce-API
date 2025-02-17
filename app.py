@@ -2,12 +2,15 @@ from flask import Flask
 from controllers import account_blp, transaction_blp
 from db import db
 import models
+import sessionData
 
 
 app = Flask(__name__)
 
 app.register_blueprint(account_blp, url_prefix='/api')
 app.register_blueprint(transaction_blp, url_prefix='/api')
+sessionData.gather_products()
+
 
 @app.cli.command("init-db")
 def init_db():
