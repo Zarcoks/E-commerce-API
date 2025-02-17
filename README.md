@@ -1,22 +1,14 @@
-To setup your environment without docker:
+Création du virtual environment:
+py -3 -m venv .venv
 
-python3 -m venv .venv
-
-On VSCode:
+Sur VSCode: 
 Ctrl + Shift + P
 Python: Select Interpreter
+Sélectionner celui où il y de noté ".venv"
 
-Then select the one where you'll see ".env" in it. 
-
-This will allow you to run a python virtual environment, in which you'll be able to run:
-
-flask run
+Puis installer les requirements:
+pip install -r requirements.txt
 
 
-Alternatively, for docker usage, just run the following:
-
-docker build -t flask-tp .
-
-docker run -d -p 3000:3000 flask-tp
-
-Make sure you installed docker first !
+NE PAS OUBLIER DE CREER LA DB
+flask init-db
