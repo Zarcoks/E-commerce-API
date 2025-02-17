@@ -1,3 +1,4 @@
+"""
 from flask import Blueprint, abort, jsonify, redirect, request, url_for
 from models import Account, Transaction
 from playhouse.shortcuts import model_to_dict, dict_to_model
@@ -69,3 +70,4 @@ def accounts_create():
         }), 422
 
     return redirect(url_for("accounts_get", id=new_account.id))
+"""

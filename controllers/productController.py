@@ -6,7 +6,7 @@ from playhouse.shortcuts import model_to_dict, dict_to_model
 product_blp = Blueprint('product_blp', __name__)
 
 @product_blp.route('/products', methods=['GET'])
-def products():
+def get_products():
     products = []
     for account in Product.select():
         products.append(model_to_dict(account))

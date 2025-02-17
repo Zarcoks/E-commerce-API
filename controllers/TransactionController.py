@@ -1,3 +1,4 @@
+"""
 from flask import Blueprint, abort, jsonify, redirect, request, url_for
 import db
 from models import Account, Transaction
@@ -58,3 +59,4 @@ def transactions_get(id):
         return abort(404)
 
     return jsonify(model_to_dict(transaction))
+"""
