@@ -2,7 +2,7 @@ from flask import Blueprint, abort, jsonify, redirect, request, url_for
 from models import Order, Product, Product_Command
 from playhouse.shortcuts import model_to_dict, dict_to_model
 import peewee as p
-from services import getShippingPrice
+from services import createOrder, addUserInfoToOrder, getOrder
 
 
 order_blp = Blueprint('order_blp', __name__)
@@ -10,9 +10,11 @@ order_blp = Blueprint('order_blp', __name__)
 
 @order_blp.route('/order/<int:id>', methods=['GET'])
 def get_order(id):
-    order = model_to_dict(Order.get_by_id(id))
+    res = getOrder(id)
 
-    return jsonify(order)
+    if (res["hasError"]):
+        return jsonify(res["result"]), res["code"]
+    return jsonify(res["result"]), res["code"]
 
 
 @order_blp.route('/order', methods=["POST"])
@@ -20,30 +22,38 @@ def create_order():
     if not request.is_json:
         return abort(400)
 
-    json_payload = request.json['product']
+    if ("product" in request.json):
+        json_payload = request.json['product']
+    else:
+        json_payload = None
 
-    new_product_order = Product_Command(
-        product_id=json_payload["id"],
-        quantity=json_payload["quantity"]
-    )
+    res = createOrder(json_payload)
 
-    new_product_order.save()
-
-    product = Product.get_by_id(json_payload["id"])
-
-    # Créer une nouvelle commande avec les champs spécifiés
-    new_order = Order(
-        total_price=product.price * json_payload["quantity"],
-        shipping_price=getShippingPrice(product),
-        product=new_product_order
-    )
-
-    # Sauvegardez la nouvelle commande dans la base de données
-    new_order.save()
-
-    return redirect(url_for('order_blp.get_order', id=new_order.id), code=302)
+    if (res["hasError"]):
+        return jsonify(res["error"]), res["code"]
+    else:
+        return jsonify(), 302, {'location': '/api/order/' + str(res["result"])}
 
 
+
+@order_blp.route('/order/<int:order_id>', methods=["PUT"])
+def modify_order(order_id):
+    if not request.is_json:
+        return abort(400)
+
+    if ("order" in request.json):
+        json_payload = request.json['order']
+    else:
+        json_payload = None
+
+    res = addUserInfoToOrder(order_id, json_payload)
+
+    if (res["hasError"]):
+        return jsonify(res["error"]), res["code"]
+    return get_order(res["result"]["id"])
+
+
+#TEMP
 @order_blp.route('/product_command', methods=['GET'])
 def get_products():
     try:

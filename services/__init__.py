@@ -1,1 +1,1 @@
-from .orderService import getShippingPrice
+from .orderService import *
