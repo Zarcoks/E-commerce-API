@@ -1,19 +1,12 @@
 from models.order import Order
 from models.product import Product
 from models.productCommand import Product_Command
-from .shippingInformationService import hasAllDataForCreation, createShippingInformation
+from .shippingInformationService import *
+from .creditCardService import hasAllDataForCreation as hasAllDataForCreditCardCreation, createCreditCard
+from .transactionService import createTransaction
 from .generalService import resDict 
 from playhouse.shortcuts import model_to_dict, dict_to_model
-
-
-# Calcule le shipping price selon comme demandé dans la consigne
-def getShippingPrice(product):
-    weight = product.price
-    if (weight < 500):
-        return 5.0
-    elif (weight < 2000):
-        return 10.0
-    return 25.0
+import requests
 
 
 # Prend le payload de la commande, et renvoie l'id de la nouvelle commande
@@ -103,20 +96,88 @@ def updateOrder(order, province):
     return order
 
 
-# Modifie l'order d'id orderId avec les infos dans json_payload (seulement celles définies dans la consigne)
-def addUserInfoToOrder(orderId, json_payload):
-    if (json_payload is None or "email" not in json_payload 
-        or "shipping_information" not in json_payload
-        or hasAllDataForCreation(json_payload["shipping_information"])):
+# Vérifie les données utilisateur et redirige vers la fonction de modification nécessaire
+def modifyOrder(orderId, json_payload):
+    missingFields = resDict(-1, 422, True, {
+                "errors" : {
+                    "order": {
+                        "code": "missing-fields",
+                        "name": "Il manque un ou plusieurs champs qui sont obligatoires",
+                    }
+                }
+            })
+    
+    if (json_payload is None):
+        return missingFields
+    
+    # S'il s'agit d'une modification à propos de shipping information et email:
+    if ("email" in json_payload 
+        and "shipping_information" in json_payload
+        and hasAllDataForCreation(json_payload["shipping_information"])):
+        return addUserInfoToOrder(orderId, json_payload)
+    
+    # S'il s'agit d'une modification à propos de credit card
+    elif (hasAllDataForCreditCardCreation(json_payload)):
+        return addCreditCardToOrder(orderId, json_payload)
+
+    return missingFields
+        
+
+# Renvoie un resDict avec l'erreur associée si erreur il y a, sinon un resDict vide sans erreur
+def verifyDataBeforePayment(order):
+    # Erreur si commande déjà payée
+    if (order.paid):
         return resDict(-1, 422, True, {
             "errors" : {
                 "order": {
-                    "code": "missing-fields",
-                    "name": "Il manque un ou plusieurs champs qui sont obligatoires",
+                    "code": "already-paid",
+                    "name": "La commande a déjà été payée."
                 }
             }
         })
     
+    # Erreur si la commande n'a pas de shipping info / email
+    elif (not hasRegistredShippingInfo(order)):
+        return resDict(-1, 422, True, {
+            "errors" : {
+                "order": {
+                    "code": "missing-fields",
+                    "name": "Les informations du client sont nécessaire avant d'appliquer une carte de crédit"
+                }
+            }
+        })
+    
+    return resDict(0, 200)
+
+def addCreditCardToOrder(orderId, json_payload):
+    # Récupération de l'order
+    try:
+        order = Order.get_by_id(orderId)
+    except:
+        return resDict(-1, 404, True, {})
+    
+    # Vérification des data
+    resVerif = verifyDataBeforePayment(order)
+    if (resVerif["hasError"]):
+        return resVerif
+    
+    # Application du paiement
+    json_payload["amount_charged"] = order.total_price_tax + order.shipping_price
+    apiResponse = sendPaymentData(json_payload)
+    if (apiResponse["hasError"]):
+        return apiResponse # erreur lors du paiement
+    else:
+        # Update si le paiement a réussi
+        paymentData = apiResponse["result"]
+        order.credit_card = createCreditCard(paymentData["credit_card"])
+        order.transaction = createTransaction(paymentData["transaction"])
+        order.save()
+        return resDict(paymentData, 200)
+        
+
+# Modifie l'order d'id orderId avec les infos dans json_payload (seulement celles définies dans la consigne)
+# Suppose les données déjà vérifiées
+def addUserInfoToOrder(orderId, json_payload):
     try:
         order = Order.get_by_id(orderId)
     except:
@@ -129,3 +190,25 @@ def addUserInfoToOrder(orderId, json_payload):
     order.save()
 
     return resDict(model_to_dict(order), 200)
+
+
+# Renvoie le json des data renvoyées par l'API de paiement
+def sendPaymentData(payload):
+    url = "http://dimensweb.uqac.ca/~jgnault/shops/pay/"
+    headers = {"Content-Type": "application/json"}
+    
+    response = requests.post(url, json=payload, headers=headers)
+    
+    try:
+        response_data = resDict(response.json(), 200)
+    except ValueError:
+        response_data = resDict(-1, response.status_code, True, {
+            "errors" : {
+                "credit_card": {
+                    "code": "card-declined",
+                    "name": "La carte de crédit a été déclinée"
+                }
+            }
+        })
+    
+    return response_data

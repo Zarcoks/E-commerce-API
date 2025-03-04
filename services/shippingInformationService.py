@@ -1,12 +1,29 @@
 from models.shippingInformation import Shipping_Information
+from playhouse.shortcuts import model_to_dict, dict_to_model
 
 def hasAllDataForCreation(json_payload):
     return (
-        "country" not in json_payload
-        or "address" not in json_payload
-        or "postal_code" not in json_payload
-        or "city" not in json_payload
-        or "province" not in json_payload
+        "country" in json_payload
+        and "address" in json_payload
+        and "postal_code" in json_payload
+        and "city" in json_payload
+        and "province" in json_payload
+    )
+
+
+# Renvoie True si l'order contient tous les attributs liés à shipping info et email
+# param order -> Model
+def hasRegistredShippingInfo(order):
+    dictOrder = model_to_dict(order)
+
+    # Conversion du nom du modèle
+    if ("postalCode" in dictOrder["shipping_information"]):
+        dictOrder["shipping_information"]["postal_code"] = dictOrder["shipping_information"]["postalCode"]
+
+    return (
+        "email" in dictOrder
+        and "shipping_information" in dictOrder
+        and hasAllDataForCreation(dictOrder["shipping_information"])
     )
 
 
@@ -24,3 +41,13 @@ def createShippingInformation(json_payload):
     newShipInfo.save()
 
     return newShipInfo.id
+
+
+# Calcule le shipping price selon comme demandé dans la consigne
+def getShippingPrice(product):
+    weight = product.price
+    if (weight < 500):
+        return 5.0
+    elif (weight < 2000):
+        return 10.0
+    return 25.0

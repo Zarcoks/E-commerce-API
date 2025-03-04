@@ -2,7 +2,7 @@ from flask import Blueprint, abort, jsonify, redirect, request, url_for
 from models import Order, Product, Product_Command
 from playhouse.shortcuts import model_to_dict, dict_to_model
 import peewee as p
-from services import createOrder, addUserInfoToOrder, getOrder
+from services import createOrder, addUserInfoToOrder, getOrder, modifyOrder
 
 
 order_blp = Blueprint('order_blp', __name__)
@@ -43,10 +43,12 @@ def modify_order(order_id):
 
     if ("order" in request.json):
         json_payload = request.json['order']
+    elif ("credit_card" in request.json):
+        json_payload = {"credit_card": request.json["credit_card"]}
     else:
         json_payload = None
 
-    res = addUserInfoToOrder(order_id, json_payload)
+    res = modifyOrder(order_id, json_payload)
 
     if (res["hasError"]):
         return jsonify(res["error"]), res["code"]
