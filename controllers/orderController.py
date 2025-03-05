@@ -52,7 +52,11 @@ def modify_order(order_id):
 
     if (res["hasError"]):
         return jsonify(res["error"]), res["code"]
-    return get_order(res["result"]["id"])
+    print("\n\n\n LA \n\n\n")
+    print(res)
+    if ("id" in res["result"]):
+        return get_order(res["result"]["id"])
+    return res["result"], res["code"]
 
 
 #TEMP

@@ -16,14 +16,18 @@ def hasAllDataForCreation(json_payload):
 def hasRegistredShippingInfo(order):
     dictOrder = model_to_dict(order)
 
+    # Vérifie si shipping info est dans dictOrder, et que s'il y est, qu'il n'est pas None
+    if (
+        ("shipping_information" not in dictOrder) 
+        or "shipping_information" in dictOrder and dictOrder["shipping_information"] is None):
+        return False
+
     # Conversion du nom du modèle
     if ("postalCode" in dictOrder["shipping_information"]):
         dictOrder["shipping_information"]["postal_code"] = dictOrder["shipping_information"]["postalCode"]
 
     return (
-        "email" in dictOrder
-        and "shipping_information" in dictOrder
-        and hasAllDataForCreation(dictOrder["shipping_information"])
+        "email" in dictOrder and hasAllDataForCreation(dictOrder["shipping_information"])
     )
 
 

@@ -164,6 +164,7 @@ def addCreditCardToOrder(orderId, json_payload):
     # Application du paiement
     json_payload["amount_charged"] = order.total_price_tax + order.shipping_price
     apiResponse = sendPaymentData(json_payload)
+    
     if (apiResponse["hasError"]):
         return apiResponse # erreur lors du paiement
     else:
@@ -171,7 +172,10 @@ def addCreditCardToOrder(orderId, json_payload):
         paymentData = apiResponse["result"]
         order.credit_card = createCreditCard(paymentData["credit_card"])
         order.transaction = createTransaction(paymentData["transaction"])
+        order.paid = True
         order.save()
+        print("\n\n\n LA \n\n\n")
+        print(paymentData)
         return resDict(paymentData, 200)
         
 
@@ -194,21 +198,17 @@ def addUserInfoToOrder(orderId, json_payload):
 
 # Renvoie le json des data renvoyées par l'API de paiement
 def sendPaymentData(payload):
-    url = "http://dimensweb.uqac.ca/~jgnault/shops/pay/"
+    url = "https://dimensweb.uqac.ca/~jgnault/shops/pay/"
     headers = {"Content-Type": "application/json"}
     
     response = requests.post(url, json=payload, headers=headers)
     
     try:
-        response_data = resDict(response.json(), 200)
-    except ValueError:
-        response_data = resDict(-1, response.status_code, True, {
-            "errors" : {
-                "credit_card": {
-                    "code": "card-declined",
-                    "name": "La carte de crédit a été déclinée"
-                }
-            }
-        })
+        response_data = response.json()
+    except:
+        response_data = None # Erreur de l'API distante
+
+    if ("errors" in response_data):
+        return resDict(-1, response.status_code, True, response_data) # Carte déclinée
     
-    return response_data
+    return resDict(response_data, response.status_code) # Cas où ça a marché

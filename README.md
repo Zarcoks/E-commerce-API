@@ -23,4 +23,3 @@ Pour la communication entre les controleurs et les services, j'avais besoin d'un
 A vérifier le code 302 et location
 !!!Quantité négative création order
 Prix en centimes ?
-Test de l'API de paiement indisponible à cause des 401 répétées
