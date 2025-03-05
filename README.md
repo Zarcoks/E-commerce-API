@@ -20,6 +20,7 @@ Pour la communication entre les controleurs et les services, j'avais besoin d'un
 
 
 
-A vérifier le code 302 et location
-!!!Quantité négative création order
-Prix en centimes ?
+Incertitudes:
+1. Les prix sont-ils en centimes ? (implémenté comme tel)
+2. L'API doit-elle considérer un path qui commence par '/api/..' ?
+3. Est-ce que la librairie 'request' est autorisée ?

@@ -11,7 +11,10 @@ import requests
 
 # Prend le payload de la commande, et renvoie l'id de la nouvelle commande
 def createOrder(json_payload):
-    if (json_payload is None or "id" not in json_payload or "quantity" not in json_payload):
+    if (json_payload is None 
+        or "id" not in json_payload 
+        or "quantity" not in json_payload
+        or json_payload["quantity"] < 1):
         return resDict(-1, 422, True, {
             "errors": {
                 "product": {
@@ -43,8 +46,8 @@ def createOrder(json_payload):
     new_product_order.save()
 
     new_order = Order(
-        total_price=product.price * json_payload["quantity"],
-        shipping_price=getShippingPrice(product),
+        total_price=product.price * 100 * json_payload["quantity"], # cout en centimes
+        shipping_price=getShippingPrice(product, json_payload["quantity"]),
         product=new_product_order
     )
 
@@ -56,7 +59,9 @@ def createOrder(json_payload):
 # Remplace les champs null par des dict vides pour des colonnes données
 # "credit_card": null  ---->  "credit_card": {}
 def formatOrder(order):
+    order["product"]["id"] = order["product"]["product_id"]["id"]
     del order["product"]["product_id"] # Join automatique de peewee
+
     
     # Champs concernés
     to_replace = ["credit_card", "shipping_information", "transaction"]
@@ -64,6 +69,12 @@ def formatOrder(order):
     for replaceKey in to_replace:
         if (order[replaceKey] is None):
             order[replaceKey] = {}
+
+    # On remplace l'id de l'objet transaction par l'id de la transaction de l'api de paiement 
+    if ("id" in order["transaction"] and "api_id" in order["transaction"]):
+        order["transaction"]["id"] = order["transaction"]["api_id"]
+        del order["transaction"]["api_id"]
+
     return order
 
 
@@ -174,9 +185,8 @@ def addCreditCardToOrder(orderId, json_payload):
         order.transaction = createTransaction(paymentData["transaction"])
         order.paid = True
         order.save()
-        print("\n\n\n LA \n\n\n")
-        print(paymentData)
-        return resDict(paymentData, 200)
+
+        return resDict(model_to_dict(order), 200)
         
 
 # Modifie l'order d'id orderId avec les infos dans json_payload (seulement celles définies dans la consigne)

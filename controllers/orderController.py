@@ -32,7 +32,7 @@ def create_order():
     if (res["hasError"]):
         return jsonify(res["error"]), res["code"]
     else:
-        return jsonify(), 302, {'location': '/api/order/' + str(res["result"])}
+        return jsonify(), 302, {'location': '/order/' + str(res["result"])}
 
 
 
@@ -52,11 +52,8 @@ def modify_order(order_id):
 
     if (res["hasError"]):
         return jsonify(res["error"]), res["code"]
-    print("\n\n\n LA \n\n\n")
-    print(res)
-    if ("id" in res["result"]):
-        return get_order(res["result"]["id"])
-    return res["result"], res["code"]
+
+    return get_order(res["result"]["id"])
 
 
 #TEMP

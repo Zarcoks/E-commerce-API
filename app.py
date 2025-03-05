@@ -7,8 +7,8 @@ import models
 
 app = Flask(__name__)
 
-app.register_blueprint(product_blp, url_prefix='/api')
-app.register_blueprint(order_blp, url_prefix='/api')
+app.register_blueprint(product_blp, url_prefix='/')
+app.register_blueprint(order_blp, url_prefix='/')
 
 @app.cli.command("init-db")
 def init_db():
