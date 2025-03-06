@@ -1,6 +1,4 @@
 import json
-from flask import jsonify
-import requests
 import urllib
 from models.product import Product
 
