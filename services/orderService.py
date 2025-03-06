@@ -1,3 +1,6 @@
+import json
+
+import urllib
 from models.order import Order
 from models.product import Product
 from models.productCommand import Product_Command
@@ -211,14 +214,17 @@ def sendPaymentData(payload):
     url = "https://dimensweb.uqac.ca/~jgnault/shops/pay/"
     headers = {"Content-Type": "application/json"}
     
-    response = requests.post(url, json=payload, headers=headers)
+    # Préparation de la requête
+    data = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(url, data=data, headers=headers, method='POST')
     
     try:
-        response_data = response.json()
+        with urllib.request.urlopen(req) as response:
+            response_data = json.loads(response.read().decode('utf-8'))
     except:
-        response_data = None # Erreur de l'API distante
-
-    if ("errors" in response_data):
-        return resDict(-1, response.status_code, True, response_data) # Carte déclinée
+        response_data = None  # Erreur de l'API distante
     
-    return resDict(response_data, response.status_code) # Cas où ça a marché
+    if response_data and "errors" in response_data:
+        return resDict(-1, response.getcode(), True, response_data)  # Carte déclinée
+    
+    return resDict(response_data, response.getcode())  # Cas où ça a marché
