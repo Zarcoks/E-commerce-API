@@ -1,4 +1,4 @@
-from models.transaction import Transaction
+from models.Transaction import Transaction
 from playhouse.shortcuts import model_to_dict, dict_to_model
 
 

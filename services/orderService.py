@@ -9,7 +9,6 @@ from .creditCardService import hasAllDataForCreation as hasAllDataForCreditCardC
 from .transactionService import createTransaction
 from .generalService import resDict 
 from playhouse.shortcuts import model_to_dict, dict_to_model
-import requests
 
 
 # Prend le payload de la commande, et renvoie l'id de la nouvelle commande
