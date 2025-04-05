@@ -2,7 +2,7 @@ from .BaseModel import BaseModel
 from models.shippingInformation import Shipping_Information
 from models.productCommand import Product_Command
 from models.creditCard import Credit_Card
-from models.Transaction import Transaction
+from models.transaction import Transaction
 import peewee as p
 
 class Order(BaseModel):
