@@ -19,8 +19,5 @@ Le projet suit la structure MVCS (Model - View - Controller - Service)
 Pour la communication entre les controleurs et les services, j'avais besoin d'une gestion d'erreur personnalisable. Pour répondre à ce problème j'ai préféré faire simple et utiliser un dictionnaire pour chaque fonction de service qui soit appelée par un controleur. Ainsi je peux communiquer un code http, et une erreur si besoin. 
 
 
-
-Incertitudes:
-1. Les prix sont-ils en centimes ? (implémenté comme tel)
-2. L'API doit-elle considérer un path qui commence par '/api/..' ?
-3. Est-ce que la librairie 'request' est autorisée ?
+A ne pas tenir compte:
+Lancer la database: docker run --name my-postgres -e POSTGRES_USER=user -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=api8inf349 -p 5432:5432 -d postgres
