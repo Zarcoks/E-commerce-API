@@ -21,6 +21,7 @@ def init_db():
         models.Order, 
         models.Product, 
         models.Product_Command, 
+        models.OrderProduct, 
         models.Shipping_Information, 
         models.Transaction
     ], safe=True)

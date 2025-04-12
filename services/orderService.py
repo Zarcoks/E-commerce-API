@@ -4,6 +4,7 @@ import urllib
 from models.order import Order
 from models.product import Product
 from models.productCommand import Product_Command
+from models.orderProducts import OrderProduct
 from .shippingInformationService import *
 from .creditCardService import hasAllDataForCreation as hasAllDataForCreditCardCreation, createCreditCard
 from .transactionService import createTransaction
@@ -11,8 +12,7 @@ from .generalService import resDict
 from playhouse.shortcuts import model_to_dict, dict_to_model
 
 
-# Prend le payload de la commande, et renvoie l'id de la nouvelle commande
-def createOrder(json_payload):
+def getOneOrderError(json_payload):
     if (json_payload is None 
         or "id" not in json_payload 
         or "quantity" not in json_payload
@@ -39,32 +39,56 @@ def createOrder(json_payload):
                 }
             }
         })
+    return resDict(0, 200)
 
-    new_product_order = Product_Command(
-        product_id=json_payload["id"],
-        quantity=json_payload["quantity"]
-    )
 
-    new_product_order.save()
+def calculateTotalPrice(products):
+    totalPrice = 0
+    for product in products:
+        p = model_to_dict(product)
+        print(p)
+        totalPrice += p["product"]["price"] * p["quantity"]
+    return totalPrice
+
+# Prend le payload de la commande, et renvoie l'id de la nouvelle commande
+def createOrder(json_payload):
+    if not isinstance(json_payload, list):
+        json_payload = [json_payload]
 
     new_order = Order(
-        total_price=product.price * 100 * json_payload["quantity"], # cout en centimes
-        shipping_price=getShippingPrice(product, json_payload["quantity"]),
-        product=new_product_order
+        # total_price=product.price * 100 * json_payload["quantity"], # cout en centimes
+        # shipping_price=getShippingPrice(product, json_payload["quantity"]),
     )
 
     new_order.save()
 
-    return resDict(new_order.id, 302, False)
+    products = []
+
+    for product in json_payload:
+        # Vérification de chaque produit
+        error = getOneOrderError(product)
+        if (error["hasError"]): return error
+
+        products.append(OrderProduct(
+            order = new_order.id,
+            product = product["id"],
+            quantity = product["quantity"]
+        ))
+
+    for verifiedProduct in products:
+        verifiedProduct.save()
+
+    new_order.total_price = calculateTotalPrice(products)
+    new_order.save()
+
+    return resDict(new_order.id, 302)
+
 
 
 # Remplace les champs null par des dict vides pour des colonnes données
 # "credit_card": null  ---->  "credit_card": {}
-def formatOrder(order):
-    order["product"]["id"] = order["product"]["product_id"]["id"]
-    del order["product"]["product_id"] # Join automatique de peewee
-
-    
+def formatOrder(order, products):
+    # print(order)
     # Champs concernés
     to_replace = ["credit_card", "shipping_information", "transaction"]
 
@@ -77,6 +101,13 @@ def formatOrder(order):
         order["transaction"]["id"] = order["transaction"]["api_id"]
         del order["transaction"]["api_id"]
 
+    order["products"] = []
+    for product in products:
+        order["products"].append({
+            "id": product["product"]["id"],
+            "quantity": product["quantity"]
+        })
+
     return order
 
 
@@ -85,11 +116,14 @@ def formatOrder(order):
 def getOrder(id):
     try:
         order = Order.get_by_id(id)
+        products = []
+        for product in OrderProduct.select(OrderProduct).where(OrderProduct.order == order.id):
+            products.append(model_to_dict(product))
     except:
         return resDict({}, 404, True)
     
     order = model_to_dict(order)
-    order = formatOrder(order)
+    order = formatOrder(order, products)
     
     return resDict(order, 200)
 

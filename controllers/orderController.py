@@ -24,6 +24,8 @@ def create_order():
 
     if ("product" in request.json):
         json_payload = request.json['product']
+    elif ("products" in request.json):
+        json_payload = request.json['products']
     else:
         json_payload = None
 
