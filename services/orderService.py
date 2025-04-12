@@ -10,7 +10,25 @@ from .creditCardService import hasAllDataForCreation as hasAllDataForCreditCardC
 from .transactionService import createTransaction
 from .generalService import resDict 
 from playhouse.shortcuts import model_to_dict, dict_to_model
+from redis import Redis
+from redis import RedisError
+from .redis_config import redis_client
 
+def serialize_order(order):
+    return json.dumps({
+        "id": order["id"],
+        "email": order["email"],
+        "total_price": order["total_price"],
+        "total_price_tax": order["total_price_tax"],
+        "paid": order["paid"],
+        "shipping_price": order["shipping_price"],
+        "shipping_information": order["shipping_information"]["id"] if order["shipping_information"] else None,
+        "credit_card": order["credit_card"]["id"] if order["credit_card"] else None,
+        "transaction": order["transaction"]["id"] if order["transaction"] else None,
+    })
+
+def deserialize_order(order_json):
+    return json.loads(order_json)
 
 def getOneOrderError(json_payload):
     if (json_payload is None 
@@ -46,8 +64,7 @@ def calculateTotalPrice(products):
     totalPrice = 0
     for product in products:
         p = model_to_dict(product)
-        print(p)
-        totalPrice += p["product"]["price"] * p["quantity"]
+        totalPrice += p["product"]["price"] * p["quantity"] * 100
     return totalPrice
 
 # Prend le payload de la commande, et renvoie l'id de la nouvelle commande
@@ -55,10 +72,7 @@ def createOrder(json_payload):
     if not isinstance(json_payload, list):
         json_payload = [json_payload]
 
-    new_order = Order(
-        # total_price=product.price * 100 * json_payload["quantity"], # cout en centimes
-        # shipping_price=getShippingPrice(product, json_payload["quantity"]),
-    )
+    new_order = Order()
 
     new_order.save()
 
@@ -79,6 +93,7 @@ def createOrder(json_payload):
         verifiedProduct.save()
 
     new_order.total_price = calculateTotalPrice(products)
+    new_order.shipping_price = getShippingPrice(products)
     new_order.save()
 
     return resDict(new_order.id, 302)
@@ -115,7 +130,11 @@ def formatOrder(order, products):
 # Renvoie un 404 si la commande n'a pas été trouvée
 def getOrder(id):
     try:
-        order = Order.get_by_id(id)
+        # Récupération depuis redis si possible:
+        cached_order = redis_client.get(f"order:{id}")
+        if cached_order:
+            order = dict_to_model(model_class=Order, data=deserialize_order(cached_order))
+        else: order = Order.get_by_id(id)
         products = []
         for product in OrderProduct.select(OrderProduct).where(OrderProduct.order == order.id):
             products.append(model_to_dict(product))
@@ -165,7 +184,15 @@ def modifyOrder(orderId, json_payload):
     
     # S'il s'agit d'une modification à propos de credit card
     elif (hasAllDataForCreditCardCreation(json_payload)):
-        return addCreditCardToOrder(orderId, json_payload)
+        rep = addCreditCardToOrder(orderId, json_payload)
+        order = rep["result"]
+
+        if not rep["hasError"] and order["paid"]:
+            try:
+                redis_client.set(f"order:{order["id"]}", serialize_order(order))
+            except RedisError as e:
+                print(f"Erreur lors de la mise en cache Redis: {e}")
+        return rep
 
     return missingFields
         

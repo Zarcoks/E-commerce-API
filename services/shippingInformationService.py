@@ -48,10 +48,16 @@ def createShippingInformation(json_payload):
 
 
 # Calcule le shipping price selon comme demandé dans la consigne
-def getShippingPrice(product, quantity):
-    weight = product.weight * quantity
-    if (weight < 500):
+def getShippingPrice(products):
+    totalWeight = 0
+    for product in products:
+        p = model_to_dict(product)
+        totalWeight += p["product"]["weight"] * p["quantity"]
+
+    if (totalWeight < 500):
         return 500
-    elif (weight < 2000):
+    elif (totalWeight < 2000):
         return 1000
     return 2500
+
+    
