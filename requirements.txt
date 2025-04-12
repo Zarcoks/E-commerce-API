@@ -3,3 +3,4 @@ peewee
 python-dotenv
 psycopg2
 redis
+rq

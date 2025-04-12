@@ -13,6 +13,9 @@ from playhouse.shortcuts import model_to_dict, dict_to_model
 from redis import Redis
 from redis import RedisError
 from .redis_config import redis_client
+from rq import Queue
+
+queue = Queue(connection=redis_client)
 
 def serialize_order(order):
     return json.dumps({
@@ -130,6 +133,8 @@ def formatOrder(order, products):
 # Renvoie un 404 si la commande n'a pas été trouvée
 def getOrder(id):
     try:
+        if redis_client.exists(f"order:{id}:processing"):
+            return resDict(None, 202)
         # Récupération depuis redis si possible:
         cached_order = redis_client.get(f"order:{id}")
         if cached_order:
@@ -176,6 +181,10 @@ def modifyOrder(orderId, json_payload):
     if (json_payload is None):
         return missingFields
     
+    # Queue du worker
+    if redis_client.exists(f"order:{orderId}:processing"):
+        return resDict(-1, 409, True, {})
+    
     # S'il s'agit d'une modification à propos de shipping information et email:
     if ("email" in json_payload 
         and "shipping_information" in json_payload
@@ -184,18 +193,25 @@ def modifyOrder(orderId, json_payload):
     
     # S'il s'agit d'une modification à propos de credit card
     elif (hasAllDataForCreditCardCreation(json_payload)):
-        rep = addCreditCardToOrder(orderId, json_payload)
-        order = rep["result"]
-
-        if not rep["hasError"] and order["paid"]:
-            try:
-                redis_client.set(f"order:{order["id"]}", serialize_order(order))
-            except RedisError as e:
-                print(f"Erreur lors de la mise en cache Redis: {e}")
-        return rep
+        # Pose un flag de traitement en cours
+        redis_client.set(f"order:{orderId}:processing", "1")
+        queue.enqueue(processPayment, orderId, json_payload)
+        return resDict(None, 202)
 
     return missingFields
-        
+
+
+def processPayment(orderId, json_payload):
+    rep = addCreditCardToOrder(orderId, json_payload)
+    order = rep["result"]
+
+    if not rep["hasError"] and order["paid"]:
+        try:
+            redis_client.set(f"order:{orderId}", serialize_order(order))
+        except RedisError as e:
+            print(f"Erreur lors de la mise en cache Redis: {e}")
+
+    redis_client.delete(f"order:{orderId}:processing")
 
 # Renvoie un resDict avec l'erreur associée si erreur il y a, sinon un resDict vide sans erreur
 def verifyDataBeforePayment(order):
@@ -248,7 +264,6 @@ def addCreditCardToOrder(orderId, json_payload):
         order.transaction = createTransaction(paymentData["transaction"])
         order.paid = True
         order.save()
-
         return resDict(model_to_dict(order), 200)
         
 
