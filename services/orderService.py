@@ -14,8 +14,7 @@ from redis import Redis
 from redis import RedisError
 from .redis_config import redis_client
 from rq import Queue
-
-queue = Queue(connection=redis_client)
+from .QueueConnection import queue
 
 def serialize_order(order):
     return json.dumps({
@@ -195,7 +194,7 @@ def modifyOrder(orderId, json_payload):
     elif (hasAllDataForCreditCardCreation(json_payload)):
         # Pose un flag de traitement en cours
         redis_client.set(f"order:{orderId}:processing", "1")
-        queue.enqueue(processPayment, orderId, json_payload)
+        queue.enqueue(processPayment, orderId, json_payload, job_timeout=None)
         return resDict(None, 202)
 
     return missingFields

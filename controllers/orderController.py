@@ -55,6 +55,7 @@ def modify_order(order_id):
     if (res["hasError"]):
         return jsonify(res["error"]), res["code"]
 
+    if (res["result"] is None): return jsonify(), res["code"]
     return get_order(res["result"]["id"])
 
 
