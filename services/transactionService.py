@@ -12,3 +12,23 @@ def createTransaction(json_payload):
     newTransaction.save()
 
     return newTransaction.id
+
+
+def createErrorTransaction(apiError):
+    print(apiError)
+    name, code = apiError["errors"]["credit_card"]["name"], apiError["errors"]["credit_card"]["code"]
+    newTransaction = Transaction(
+        success = False,
+        error_code = code,
+        error_name = name
+    )
+
+    newTransaction.save()
+
+    return newTransaction.id
+
+def filterTransactionFields(transaction):
+    if (transaction["success"]):
+        del transaction["error_code"]
+        del transaction["error_name"]
+    return transaction

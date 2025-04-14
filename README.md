@@ -20,9 +20,12 @@ Pour la communication entre les controleurs et les services, j'avais besoin d'un
 
 
 A ne pas tenir compte:
-Lancer la database: docker run --name my-postgres -e POSTGRES_USER=user -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=api8inf349 -p 5432:5432 -d postgres
+Lancer l'app: 
+> docker compose up -d --build
+> flask init-db
+> flask worker
 
 docker build -t rest-apis-flask-python .
 docker run -d -p 5000:5000 rest-apis-flask-python
 
-La mise en queue viet dêtre implémentée mais non testée
+TODO: Faire en sorte qu'après une erreur de carte de crédit, on puisse renvoyer une bonne carte et que ça formate tout comme il faut

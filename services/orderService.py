@@ -7,7 +7,7 @@ from models.productCommand import Product_Command
 from models.orderProducts import OrderProduct
 from .shippingInformationService import *
 from .creditCardService import hasAllDataForCreation as hasAllDataForCreditCardCreation, createCreditCard
-from .transactionService import createTransaction
+from .transactionService import createTransaction, createErrorTransaction
 from .generalService import resDict 
 from playhouse.shortcuts import model_to_dict, dict_to_model
 from redis import Redis
@@ -105,7 +105,7 @@ def createOrder(json_payload):
 # Remplace les champs null par des dict vides pour des colonnes données
 # "credit_card": null  ---->  "credit_card": {}
 def formatOrder(order, products):
-    # print(order)
+
     # Champs concernés
     to_replace = ["credit_card", "shipping_information", "transaction"]
 
@@ -115,8 +115,25 @@ def formatOrder(order, products):
 
     # On remplace l'id de l'objet transaction par l'id de la transaction de l'api de paiement 
     if ("id" in order["transaction"] and "api_id" in order["transaction"]):
-        order["transaction"]["id"] = order["transaction"]["api_id"]
+        del order["transaction"]["id"]
         del order["transaction"]["api_id"]
+
+        if (not order["transaction"]["success"]):
+            error = {
+                "code": order["transaction"]["error_code"],
+                "name": order["transaction"]["error_name"]
+            }
+            order["transaction"]["amount_charged"] = 0
+            order["transaction"]["error"] = error
+            del order["transaction"]["error_code"]
+            del order["transaction"]["error_name"]
+    
+    if ("shipping_information" in order 
+        and order["shipping_information"] is not None
+        and "id" in order["shipping_information"]):
+        del order["shipping_information"]["id"]
+    
+
 
     order["products"] = []
     for product in products:
@@ -254,16 +271,17 @@ def addCreditCardToOrder(orderId, json_payload):
     json_payload["amount_charged"] = order.total_price_tax + order.shipping_price
     apiResponse = sendPaymentData(json_payload)
     
-    if (apiResponse["hasError"]):
-        return apiResponse # erreur lors du paiement
-    else:
+    if (not apiResponse["hasError"]):
         # Update si le paiement a réussi
         paymentData = apiResponse["result"]
         order.credit_card = createCreditCard(paymentData["credit_card"])
         order.transaction = createTransaction(paymentData["transaction"])
         order.paid = True
-        order.save()
-        return resDict(model_to_dict(order), 200)
+
+    order.transaction = createErrorTransaction(apiResponse["error"])
+    
+    order.save()
+    return resDict(model_to_dict(order), 200)
         
 
 # Modifie l'order d'id orderId avec les infos dans json_payload (seulement celles définies dans la consigne)
@@ -295,10 +313,21 @@ def sendPaymentData(payload):
     try:
         with urllib.request.urlopen(req) as response:
             response_data = json.loads(response.read().decode('utf-8'))
-    except:
-        response_data = None  # Erreur de l'API distante
+
+        if response_data and "errors" in response_data:
+            return resDict(-1, response.getcode(), True, response_data)  # Carte déclinée
     
-    if response_data and "errors" in response_data:
-        return resDict(-1, response.getcode(), True, response_data)  # Carte déclinée
+    # Erreur de l'API distante
+    except urllib.error.HTTPError as e:
+        try:
+            error_data = json.loads(e.read().decode('utf-8'))
+        except:
+            error_data = {"error": "Unknown error occurred"}
+        return resDict(-1, e.code, True, error_data)
+
+    except Exception as e:
+        # Erreur de connexion ou autre problème
+        return resDict(-1, 500, True, {"error": str(e)})
+    
     
     return resDict(response_data, response.getcode())  # Cas où ça a marché
