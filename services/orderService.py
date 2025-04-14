@@ -125,16 +125,15 @@ def formatOrder(order, products):
             }
             order["transaction"]["amount_charged"] = 0
             order["transaction"]["error"] = error
-            del order["transaction"]["error_code"]
-            del order["transaction"]["error_name"]
+        
+        del order["transaction"]["error_code"]
+        del order["transaction"]["error_name"]
     
     if ("shipping_information" in order 
         and order["shipping_information"] is not None
         and "id" in order["shipping_information"]):
         del order["shipping_information"]["id"]
     
-
-
     order["products"] = []
     for product in products:
         order["products"].append({
@@ -277,8 +276,10 @@ def addCreditCardToOrder(orderId, json_payload):
         order.credit_card = createCreditCard(paymentData["credit_card"])
         order.transaction = createTransaction(paymentData["transaction"])
         order.paid = True
+        order.transaction.error_code = None
+        order.transaction.error_name = None
 
-    order.transaction = createErrorTransaction(apiResponse["error"])
+    else: order.transaction = createErrorTransaction(apiResponse["error"])
     
     order.save()
     return resDict(model_to_dict(order), 200)
@@ -322,12 +323,12 @@ def sendPaymentData(payload):
         try:
             error_data = json.loads(e.read().decode('utf-8'))
         except:
-            error_data = {"error": "Unknown error occurred"}
+            error_data = {"errors": "Unknown error occurred"}
         return resDict(-1, e.code, True, error_data)
 
     except Exception as e:
         # Erreur de connexion ou autre problème
-        return resDict(-1, 500, True, {"error": str(e)})
+        return resDict(-1, 500, True, {"errors": str(e)})
     
     
     return resDict(response_data, response.getcode())  # Cas où ça a marché
