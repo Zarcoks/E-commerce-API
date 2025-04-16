@@ -7,10 +7,12 @@ from db import db
 from data_loader import gather_products
 from rq import Queue, SimpleWorker
 from services import redis_client, queue
+from flask_cors import CORS
 import models
 
 
 app = Flask(__name__)
+CORS(app)
 
 app.register_blueprint(product_blp, url_prefix='/')
 app.register_blueprint(order_blp, url_prefix='/')

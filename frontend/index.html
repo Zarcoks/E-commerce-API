@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>API Test Frontend</title>
+  <script src="./main.js" defer></script>
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <header>
+        <h1>Testeur d'API</h1>
+      </header>
+    
+      <div id="products-bar"></div>
+    
+      <main>
+        <div id="error" class="error hidden"></div>
+    
+        <section id="order-creation">
+          <h2>Créer une commande</h2>
+          <form id="create-order-form">
+            <div id="cart-items"></div>
+            <button type="submit">Créer</button>
+          </form>
+        </section>
+    
+        <section id="order-update" class="hidden">
+          <h2>Informations de livraison</h2>
+          <form id="update-order-form">
+            <input type="email" name="email" placeholder="Email" required />
+            <input type="text" name="country" placeholder="Pays" required />
+            <input type="text" name="address" placeholder="Adresse" required />
+            <input type="text" name="postal_code" placeholder="Code Postal" required />
+            <input type="text" name="city" placeholder="Ville" required />
+            <input type="text" name="province" placeholder="Province" required />
+            <button type="submit">Mettre à jour</button>
+          </form>
+        </section>
+    
+        <section id="credit-card" class="hidden">
+          <h2>Carte de crédit</h2>
+          <form id="credit-card-form">
+            <input type="text" name="name" placeholder="Nom" required />
+            <input type="text" name="number" placeholder="Numéro de carte" required />
+            <input type="text" name="expiration_month" placeholder="Mois d'expiration" required />
+            <input type="text" name="expiration_year" placeholder="Année d'expiration" required />
+            <input type="text" name="cvv" placeholder="CVV" required />
+            <button type="submit">Payer</button>
+          </form>
+        </section>
+    
+        <section>
+          <h2>Consulter une commande</h2>
+          <form id="get-order-form">
+            <input type="text" name="order_id" placeholder="ID commande" required />
+            <button type="submit">Consulter</button>
+          </form>
+          <div id="order-response" class="response"></div>
+        </section>
+      </main>
+</body>
+</html>
