@@ -1,7 +1,7 @@
 Lancer l'app: 
-> docker compose up -d --build
-> flask init-db
-> flask worker
+1. docker compose up -d --build
+2. flask init-db
+3. flask worker
 
 
 Veiller à lancer les commandes flask à l'intérieur du conteneur, sinon ça ne va pas marcher.
