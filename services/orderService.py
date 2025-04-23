@@ -13,7 +13,6 @@ from playhouse.shortcuts import model_to_dict, dict_to_model
 from redis import Redis
 from redis import RedisError
 from .redis_config import redis_client
-from rq import Queue
 from .QueueConnection import queue
 
 def serialize_order(order):
